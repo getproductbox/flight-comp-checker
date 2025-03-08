@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { toast } from "@/components/ui/use-toast";
 import FlightForm from "@/components/FlightForm";
@@ -6,7 +5,7 @@ import FlightResult from "@/components/FlightResult";
 import FlightNotFound from "@/components/FlightNotFound";
 import { AnimatedTransition } from "@/components/ui-custom/AnimatedTransition";
 import { FlightFormData, FlightResult as FlightResultType } from "@/types/flight";
-import { lookupFlight } from "@/services/flightService";
+import { lookupFlight } from "@/services/flight";
 
 const Index = () => {
   const [flightData, setFlightData] = useState<FlightResultType | null>(null);
