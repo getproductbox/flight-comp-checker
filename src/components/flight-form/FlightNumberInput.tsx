@@ -13,6 +13,7 @@ import { Info } from "lucide-react";
 import FlightInputField from "./flight-number/FlightInputField";
 import FlightSuggestionList from "./flight-number/FlightSuggestionList";
 import { getFlightSuggestions, validateFlightNumber } from "./flight-number/flightNumberUtils";
+import FlightNumberValidation from "./flight-number/FlightNumberValidation";
 
 interface FlightNumberInputProps {
   value: string;
@@ -37,7 +38,7 @@ const FlightNumberInput: React.FC<FlightNumberInputProps> = ({
   // Generate flight suggestions based on input
   useEffect(() => {
     if (value.length >= 2) {
-      const { suggestions: flightSuggestions, isKnownAirline } = getFlightSuggestions(value);
+      const { suggestions: flightSuggestions } = getFlightSuggestions(value);
       setSuggestions(flightSuggestions);
       
       // Only validate if they've entered enough characters
@@ -96,21 +97,7 @@ const FlightNumberInput: React.FC<FlightNumberInputProps> = ({
         >
           Flight Number
         </Label>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" className="h-6 w-6 p-0 ml-1">
-                <Info className="h-3.5 w-3.5 text-elegant-accent" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent className="max-w-xs">
-              <p>
-                Enter the flight number as shown on your ticket or booking confirmation 
-                (e.g., BA123, LH456). This is the airline code followed by the flight number.
-              </p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <FlightNumberTooltip />
       </div>
       
       <div className="relative">
@@ -129,14 +116,29 @@ const FlightNumberInput: React.FC<FlightNumberInputProps> = ({
           onSuggestionClick={handleSuggestionClick}
         />
         
-        {isValid === false && errorMessage && (
-          <p className="text-red-500 text-xs mt-1 ml-1 animate-fade-in">
-            {errorMessage}
-          </p>
-        )}
+        <FlightNumberValidation isValid={isValid} errorMessage={errorMessage} />
       </div>
     </div>
   );
 };
+
+// Helper component for the tooltip
+const FlightNumberTooltip: React.FC = () => (
+  <TooltipProvider>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button variant="ghost" className="h-6 w-6 p-0 ml-1">
+          <Info className="h-3.5 w-3.5 text-elegant-accent" />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-xs">
+        <p>
+          Enter the flight number as shown on your ticket or booking confirmation 
+          (e.g., BA123, LH456). This is the airline code followed by the flight number.
+        </p>
+      </TooltipContent>
+    </Tooltip>
+  </TooltipProvider>
+);
 
 export default FlightNumberInput;

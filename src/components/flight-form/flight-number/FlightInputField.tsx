@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Check, AlertCircle, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import InputStatusIndicator from "./InputStatusIndicator";
 
 interface FlightInputFieldProps {
   value: string;
@@ -23,19 +24,6 @@ const FlightInputField: React.FC<FlightInputFieldProps> = ({
   onClear
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
-
-  const getInputStatusIcon = () => {
-    if (value.length === 0) {
-      return null;
-    }
-    
-    if (isValid === true) {
-      return <Check className="h-4 w-4 text-green-500" />;
-    } else if (isValid === false) {
-      return <AlertCircle className="h-4 w-4 text-red-500" />;
-    }
-    return null;
-  };
 
   const handleClearClick = () => {
     onClear();
@@ -62,7 +50,7 @@ const FlightInputField: React.FC<FlightInputFieldProps> = ({
       />
       {value.length > 0 && (
         <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-1.5">
-          {getInputStatusIcon()}
+          <InputStatusIndicator isValid={isValid} />
           <Button 
             variant="ghost" 
             size="icon" 
