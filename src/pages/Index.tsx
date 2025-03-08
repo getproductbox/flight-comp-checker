@@ -1,8 +1,10 @@
+
 import React, { useState } from "react";
 import { toast } from "@/components/ui/use-toast";
 import FlightForm from "@/components/FlightForm";
 import FlightResult from "@/components/FlightResult";
 import FlightNotFound from "@/components/FlightNotFound";
+import SavedClaimsList from "@/components/SavedClaimsList";
 import { AnimatedTransition } from "@/components/ui-custom/AnimatedTransition";
 import { FlightFormData, FlightResult as FlightResultType } from "@/types/flight";
 import { lookupFlight } from "@/services/flight";
@@ -12,6 +14,7 @@ const Index = () => {
   const [showResults, setShowResults] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showSavedClaims, setShowSavedClaims] = useState(false);
 
   const handleSubmit = async (data: FlightFormData) => {
     setIsLoading(true);
@@ -56,11 +59,27 @@ const Index = () => {
     setErrorMessage(null);
   };
 
+  const handleShowSavedClaims = () => {
+    setShowSavedClaims(true);
+  };
+
+  const handleBackFromSavedClaims = () => {
+    setShowSavedClaims(false);
+  };
+
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-elegant-background to-elegant-muted/50 p-6">
       <div className="w-full max-w-md relative">
-        <AnimatedTransition show={!showResults} animation="fade">
-          {!showResults && <FlightForm onSubmit={handleSubmit} isLoading={isLoading} />}
+        <AnimatedTransition show={!showResults && !showSavedClaims} animation="fade">
+          {!showResults && !showSavedClaims && (
+            <>
+              <FlightForm 
+                onSubmit={handleSubmit} 
+                isLoading={isLoading} 
+                onShowSavedClaims={handleShowSavedClaims} 
+              />
+            </>
+          )}
         </AnimatedTransition>
         
         <AnimatedTransition show={showResults && !errorMessage} animation="fade">
@@ -72,6 +91,12 @@ const Index = () => {
         <AnimatedTransition show={showResults && !!errorMessage} animation="fade">
           {showResults && errorMessage && (
             <FlightNotFound message={errorMessage} onBack={handleBack} />
+          )}
+        </AnimatedTransition>
+        
+        <AnimatedTransition show={showSavedClaims} animation="fade">
+          {showSavedClaims && (
+            <SavedClaimsList onBack={handleBackFromSavedClaims} />
           )}
         </AnimatedTransition>
       </div>

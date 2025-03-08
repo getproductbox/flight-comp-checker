@@ -1,7 +1,7 @@
 
 import React, { useState } from "react";
 import { format } from "date-fns";
-import { CalendarIcon, PlaneTakeoff, ArrowRight, Clock, Info } from "lucide-react";
+import { CalendarIcon, PlaneTakeoff, ArrowRight, Clock, Info, List } from "lucide-react";
 import { GlassCard } from "./ui-custom/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,19 +20,34 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { FlightFormData } from "@/types/flight";
+import { getSavedFlightClaims } from "@/services/storage";
 
 interface FlightFormProps {
   onSubmit: (data: FlightFormData) => void;
   isLoading?: boolean;
+  onShowSavedClaims?: () => void;
 }
 
-const FlightForm: React.FC<FlightFormProps> = ({ onSubmit, isLoading = false }) => {
+const FlightForm: React.FC<FlightFormProps> = ({
+  onSubmit,
+  isLoading = false,
+  onShowSavedClaims,
+}) => {
   const [flightNumber, setFlightNumber] = useState("");
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [scheduledArrival, setScheduledArrival] = useState("");
   const [isFlightNumberFocused, setIsFlightNumberFocused] = useState(false);
   const [isDateFocused, setIsDateFocused] = useState(false);
   const [isTimeFocused, setIsTimeFocused] = useState(false);
+  
+  // Get saved claims count
+  const [savedClaimsCount, setSavedClaimsCount] = useState(0);
+  
+  React.useEffect(() => {
+    // Update saved claims count when component mounts
+    const claims = getSavedFlightClaims();
+    setSavedClaimsCount(claims.length);
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,7 +61,20 @@ const FlightForm: React.FC<FlightFormProps> = ({ onSubmit, isLoading = false }) 
       className="w-full max-w-md mx-auto animate-scale-in"
       variant="elevated"
     >
-      <div className="text-center mb-8">
+      <div className="text-center mb-8 relative">
+        {savedClaimsCount > 0 && onShowSavedClaims && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute top-0 right-0 h-8 w-8 text-elegant-accent hover:text-elegant-primary"
+            onClick={onShowSavedClaims}
+          >
+            <List className="h-4 w-4" />
+            <span className="absolute -top-2 -right-2 bg-elegant-primary text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+              {savedClaimsCount}
+            </span>
+          </Button>
+        )}
         <div className="inline-flex items-center justify-center p-2 bg-elegant-muted rounded-full mb-4">
           <PlaneTakeoff className="h-6 w-6 text-elegant-primary" />
         </div>
@@ -188,6 +216,19 @@ const FlightForm: React.FC<FlightFormProps> = ({ onSubmit, isLoading = false }) 
         <br />
         This is only an eligibility check, not a guarantee of compensation.
       </div>
+      
+      {savedClaimsCount > 0 && onShowSavedClaims && (
+        <div className="mt-4 pt-4 border-t border-elegant-border/20 text-center">
+          <Button 
+            variant="ghost" 
+            className="text-elegant-accent text-sm" 
+            onClick={onShowSavedClaims}
+          >
+            <List className="h-4 w-4 mr-2" />
+            View {savedClaimsCount} saved claim{savedClaimsCount !== 1 ? 's' : ''}
+          </Button>
+        </div>
+      )}
     </GlassCard>
   );
 };

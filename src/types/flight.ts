@@ -15,6 +15,11 @@ export interface FlightResult {
   error?: string;
 }
 
+export interface SavedFlightClaim extends FlightResult {
+  id: string;
+  savedAt: string;
+}
+
 export interface OpenSkyFlight {
   icao24: string;
   firstSeen: number;

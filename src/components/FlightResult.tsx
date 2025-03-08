@@ -1,6 +1,6 @@
 
 import React from "react";
-import { ArrowLeft, CheckCircle, XCircle, Clock, Calendar, Plane, Share2 } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, Clock, Calendar, Plane, Share2, Save } from "lucide-react";
 import { GlassCard } from "./ui-custom/GlassCard";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { AnimatedTransition } from "./ui-custom/AnimatedTransition";
 import { FlightResult as FlightResultType } from "@/types/flight";
 import { toast } from "@/components/ui/use-toast";
+import { saveFlightClaim } from "@/services/storage";
 
 interface FlightResultProps {
   flightData: FlightResultType;
@@ -63,6 +64,15 @@ const FlightResult: React.FC<FlightResultProps> = ({ flightData, onBack }) => {
     }
   };
 
+  // Save claim functionality
+  const handleSaveClaim = () => {
+    saveFlightClaim(flightData);
+    toast({
+      title: "Claim saved",
+      description: "Your flight claim has been saved for future reference."
+    });
+  };
+
   // Calculate appropriate color based on delay hours
   const getDelayColor = () => {
     if (delayHours >= 5) return "text-red-500";
@@ -102,6 +112,7 @@ const FlightResult: React.FC<FlightResultProps> = ({ flightData, onBack }) => {
           </p>
         </div>
 
+        {/* Flight details section */}
         <div className={cn(
           "px-5 py-4 rounded-xl mb-6",
           isEligible ? "bg-green-50" : "bg-elegant-muted"
@@ -160,6 +171,7 @@ const FlightResult: React.FC<FlightResultProps> = ({ flightData, onBack }) => {
           </div>
         </div>
 
+        {/* Next steps section */}
         {isEligible && (
           <div className="text-sm text-elegant-accent mb-6 p-4 border border-green-200 rounded-xl bg-green-50/50">
             <strong className="font-medium text-elegant-primary block mb-2">Next steps:</strong>
@@ -192,6 +204,7 @@ const FlightResult: React.FC<FlightResultProps> = ({ flightData, onBack }) => {
           </div>
         )}
 
+        {/* Actions section */}
         <div className="flex gap-3 mb-6">
           <Button
             onClick={onBack}
@@ -199,6 +212,14 @@ const FlightResult: React.FC<FlightResultProps> = ({ flightData, onBack }) => {
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             <span>Check Another</span>
+          </Button>
+          
+          <Button
+            onClick={handleSaveClaim}
+            variant="outline"
+            className="h-12 px-4 border-elegant-border bg-white/80 hover:bg-elegant-muted/20"
+          >
+            <Save className="h-4 w-4" />
           </Button>
           
           <Button
