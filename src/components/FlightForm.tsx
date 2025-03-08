@@ -1,7 +1,7 @@
 
 import React, { useState } from "react";
 import { format } from "date-fns";
-import { CalendarIcon, PlaneTakeoff, ArrowRight, Clock } from "lucide-react";
+import { CalendarIcon, PlaneTakeoff, ArrowRight, Clock, Info } from "lucide-react";
 import { GlassCard } from "./ui-custom/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { FlightFormData } from "@/types/flight";
 
@@ -66,7 +72,7 @@ const FlightForm: React.FC<FlightFormProps> = ({ onSubmit, isLoading = false }) 
           <Input
             id="flightNumber"
             value={flightNumber}
-            onChange={(e) => setFlightNumber(e.target.value)}
+            onChange={(e) => setFlightNumber(e.target.value.toUpperCase())}
             onFocus={() => setIsFlightNumberFocused(true)}
             onBlur={() => setIsFlightNumberFocused(false)}
             placeholder="e.g. BA123"
@@ -114,15 +120,32 @@ const FlightForm: React.FC<FlightFormProps> = ({ onSubmit, isLoading = false }) 
         </div>
 
         <div className="space-y-2">
-          <Label
-            htmlFor="scheduledArrival"
-            className={cn(
-              "text-sm font-medium transition-all duration-200",
-              isTimeFocused ? "text-elegant-primary" : "text-elegant-accent"
-            )}
-          >
-            Scheduled Arrival Time (optional)
-          </Label>
+          <div className="flex items-center">
+            <Label
+              htmlFor="scheduledArrival"
+              className={cn(
+                "text-sm font-medium transition-all duration-200",
+                isTimeFocused ? "text-elegant-primary" : "text-elegant-accent"
+              )}
+            >
+              Scheduled Arrival Time
+            </Label>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" className="h-6 w-6 p-0 ml-1">
+                    <Info className="h-3.5 w-3.5 text-elegant-accent" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p>
+                    For the most accurate delay calculation, please enter the scheduled
+                    arrival time from your ticket or booking confirmation.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
           <div className="relative">
             <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-elegant-accent" />
             <Input
@@ -133,11 +156,9 @@ const FlightForm: React.FC<FlightFormProps> = ({ onSubmit, isLoading = false }) 
               onFocus={() => setIsTimeFocused(true)}
               onBlur={() => setIsTimeFocused(false)}
               className="border-elegant-border bg-white/80 h-12 text-base pl-10"
+              required
             />
           </div>
-          <p className="text-xs text-elegant-accent mt-1">
-            Adding the scheduled arrival time helps provide a more accurate delay calculation
-          </p>
         </div>
 
         <Button

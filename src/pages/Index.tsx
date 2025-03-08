@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { toast } from "@/components/ui/use-toast";
 import FlightForm from "@/components/FlightForm";
 import FlightResult from "@/components/FlightResult";
+import FlightNotFound from "@/components/FlightNotFound";
 import { AnimatedTransition } from "@/components/ui-custom/AnimatedTransition";
 import { FlightFormData, FlightResult as FlightResultType } from "@/types/flight";
 import { lookupFlight } from "@/services/flightService";
@@ -11,9 +12,11 @@ const Index = () => {
   const [flightData, setFlightData] = useState<FlightResultType | null>(null);
   const [showResults, setShowResults] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSubmit = async (data: FlightFormData) => {
     setIsLoading(true);
+    setErrorMessage(null);
     
     try {
       const response = await lookupFlight(data);
@@ -31,14 +34,14 @@ const Index = () => {
         setFlightData(result);
         setShowResults(true);
       } else {
-        toast({
-          title: "Error",
-          description: response.error || "Failed to retrieve flight data",
-          variant: "destructive"
-        });
+        setErrorMessage(response.error || "Failed to retrieve flight data");
+        setShowResults(true);
       }
     } catch (error) {
       console.error("Error processing flight:", error);
+      setErrorMessage("Something went wrong. Please try again.");
+      setShowResults(true);
+      
       toast({
         title: "Error",
         description: "Something went wrong. Please try again.",
@@ -51,6 +54,7 @@ const Index = () => {
 
   const handleBack = () => {
     setShowResults(false);
+    setErrorMessage(null);
   };
 
   return (
@@ -60,8 +64,16 @@ const Index = () => {
           {!showResults && <FlightForm onSubmit={handleSubmit} isLoading={isLoading} />}
         </AnimatedTransition>
         
-        <AnimatedTransition show={showResults} animation="fade">
-          {showResults && flightData && <FlightResult flightData={flightData} onBack={handleBack} />}
+        <AnimatedTransition show={showResults && !errorMessage} animation="fade">
+          {showResults && !errorMessage && flightData && (
+            <FlightResult flightData={flightData} onBack={handleBack} />
+          )}
+        </AnimatedTransition>
+        
+        <AnimatedTransition show={showResults && !!errorMessage} animation="fade">
+          {showResults && errorMessage && (
+            <FlightNotFound message={errorMessage} onBack={handleBack} />
+          )}
         </AnimatedTransition>
       </div>
     </div>
