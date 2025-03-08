@@ -88,15 +88,32 @@ const FlightForm: React.FC<FlightFormProps> = ({
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="space-y-2">
-          <Label
-            htmlFor="flightNumber"
-            className={cn(
-              "text-sm font-medium transition-all duration-200",
-              isFlightNumberFocused ? "text-elegant-primary" : "text-elegant-accent"
-            )}
-          >
-            Flight Number
-          </Label>
+          <div className="flex items-center">
+            <Label
+              htmlFor="flightNumber"
+              className={cn(
+                "text-sm font-medium transition-all duration-200",
+                isFlightNumberFocused ? "text-elegant-primary" : "text-elegant-accent"
+              )}
+            >
+              Flight Number
+            </Label>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" className="h-6 w-6 p-0 ml-1">
+                    <Info className="h-3.5 w-3.5 text-elegant-accent" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p>
+                    Enter the flight number as shown on your ticket or booking confirmation 
+                    (e.g., BA123, LH456). This is the airline code followed by the flight number.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
           <Input
             id="flightNumber"
             value={flightNumber}

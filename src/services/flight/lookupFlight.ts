@@ -1,3 +1,4 @@
+
 import { FlightFormData, FlightLookupResponse, OpenSkyFlight } from "@/types/flight";
 import { findMatchingFlight, calculateDelayHours, isFlightEligible } from "./flightHelpers";
 import { getCallsignFromFlightNumber } from "./airlineMapping";
@@ -36,6 +37,10 @@ export const lookupFlight = async (data: FlightFormData): Promise<FlightLookupRe
       };
     }
     
+    // Extract the numeric part of the flight number for additional matching
+    const flightNumberNumeric = data.flightNumber.match(/\d+/)?.[0];
+    console.log(`Looking for flight with callsign prefix ${callsignPrefix} and number ${flightNumberNumeric || 'unknown'}`);
+    
     // We'll use a simple approach to find the flight: 
     // Query all arrivals at major airports and filter by callsign
     const airports = ["EGLL", "EGKK", "EHAM", "LFPG", "EDDF", "LEMD", "LEBL"]; // Sample major EU airports
@@ -56,6 +61,7 @@ export const lookupFlight = async (data: FlightFormData): Promise<FlightLookupRe
         }
         
         const flights: OpenSkyFlight[] = await response.json();
+        console.log(`Found ${flights.length} flights arriving at ${airport}`);
         
         // Find a flight with matching callsign
         matchedFlight = findMatchingFlight(flights, data.flightNumber, data.date);

@@ -2,7 +2,7 @@
 import { OpenSkyFlight } from "@/types/flight";
 import { getCallsignFromFlightNumber, normalizeCallsign } from "./airlineMapping";
 
-// Find matching flight from OpenSky results
+// Find matching flight from OpenSky results with improved matching logic
 export const findMatchingFlight = (
   flights: OpenSkyFlight[],
   flightNumber: string,
@@ -12,12 +12,22 @@ export const findMatchingFlight = (
   if (!targetCallsign) return null;
   
   const normalized = normalizeCallsign(targetCallsign);
+  const numericPart = flightNumber.match(/\d+/)?.[0];
   
   // Filter flights by matching callsign
   return flights.find(flight => {
     if (!flight.callsign) return false;
+    
     const flightCallsign = normalizeCallsign(flight.callsign);
-    return flightCallsign.includes(normalized);
+    
+    // Try to match the callsign prefix
+    const callsignMatch = flightCallsign.includes(normalized);
+    
+    // If we have a numeric part of the flight number, check if it's in the callsign too
+    const numericMatch = numericPart && flightCallsign.includes(numericPart);
+    
+    // Return true if we have a callsign match AND (no numeric part OR numeric part matches)
+    return callsignMatch && (!numericPart || numericMatch);
   }) || null;
 };
 
