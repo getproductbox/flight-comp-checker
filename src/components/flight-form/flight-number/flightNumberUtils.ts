@@ -12,15 +12,13 @@ const POPULAR_FLIGHTS: Record<string, string[]> = {
   U2: ["8001", "8002", "8003", "8004", "8005"],
 };
 
-// Flight number regex pattern
-const FLIGHT_NUMBER_PATTERN = /^[A-Z0-9]{2,3}\d{1,4}$/;
-
-// Extract airline code from a flight number
+// Extract airline code from a flight number (e.g., "BA123" -> "BA")
 export const extractAirlineCode = (flightNumber: string): string => {
+  // Match 2-3 letter/number airline code at start
   return flightNumber.match(/^[A-Z0-9]{2,3}(?=\d)/)?.[0] || '';
 };
 
-// Extract numeric part of flight number
+// Extract numeric part of flight number (e.g., "BA123" -> "123")
 export const extractFlightNumber = (flightNumber: string): string => {
   return flightNumber.replace(/^[A-Z0-9]{2,3}/, '');
 };
@@ -33,13 +31,17 @@ export const isKnownAirline = (airlineCode: string): boolean => {
 
 // Generate flight suggestions based on input
 export const getFlightSuggestions = (input: string) => {
+  if (!input || input.length < 2) {
+    return { suggestions: [], isKnownAirlineCode: false };
+  }
+  
   // Extract an airline code (attempt to match 2-3 characters at the start)
   const airlineCode = extractAirlineCode(input);
   let suggestions: string[] = [];
   let isKnownAirlineCode = false;
   
   if (airlineCode) {
-    // Check known airline codes (both in map and popular flights)
+    // Check known airline codes
     isKnownAirlineCode = isKnownAirline(airlineCode);
     
     if (isKnownAirlineCode) {
@@ -68,9 +70,14 @@ export const getFlightSuggestions = (input: string) => {
   return { suggestions, isKnownAirlineCode };
 };
 
-// Validate flight number format and airline code
+// Simplified validation function
 export const validateFlightNumber = (input: string) => {
-  // Basic format validation (2-3 letter/number airline code followed by 1-4 digits)
+  // Empty input case
+  if (!input || input.length === 0) {
+    return { isValid: null, errorMessage: null };
+  }
+  
+  // Too short - still typing
   if (input.length < 3) {
     return { 
       isValid: null, 
@@ -78,13 +85,15 @@ export const validateFlightNumber = (input: string) => {
     };
   }
   
-  if (!FLIGHT_NUMBER_PATTERN.test(input)) {
+  // Basic format check - must be 2-3 letters/numbers followed by 1-4 digits
+  if (!/^[A-Z0-9]{2,3}\d{1,4}$/.test(input)) {
     return { 
       isValid: false, 
-      errorMessage: "Please enter a valid flight number (e.g., BA123)" 
+      errorMessage: "Invalid format. Example: BA123" 
     };
   }
   
+  // Check if airline code is known
   const airlineCode = extractAirlineCode(input);
   if (!isKnownAirline(airlineCode)) {
     return { 
@@ -93,5 +102,6 @@ export const validateFlightNumber = (input: string) => {
     };
   }
   
+  // If we get here, the flight number looks valid
   return { isValid: true, errorMessage: null };
 };

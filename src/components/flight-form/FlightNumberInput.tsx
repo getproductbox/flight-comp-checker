@@ -34,35 +34,39 @@ const FlightNumberInput: React.FC<FlightNumberInputProps> = ({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isValid, setIsValid] = useState<boolean | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isValidating, setIsValidating] = useState(false);
 
-  // Generate flight suggestions based on input
+  // Update validation and suggestions when the input changes
   useEffect(() => {
-    if (value.length >= 2) {
+    // Reset validation if input is cleared
+    if (!value || value.length === 0) {
+      setIsValid(null);
+      setErrorMessage(null);
+      setSuggestions([]);
+      return;
+    }
+
+    // Show loading state briefly for better UX
+    setIsValidating(true);
+    
+    // Use a small timeout to simulate processing and prevent UI jank
+    const validationTimer = setTimeout(() => {
+      // Get suggestions
       const { suggestions: flightSuggestions } = getFlightSuggestions(value);
       setSuggestions(flightSuggestions);
       
-      // Only validate if they've entered enough characters
-      if (value.length >= 3) {
-        const { isValid: flightValid, errorMessage: validationError } = validateFlightNumber(value);
-        setIsValid(flightValid);
-        setErrorMessage(validationError);
-      } else {
-        // Still typing, not enough to fully validate
-        setIsValid(null);
-        setErrorMessage(null);
-      }
-    } else {
-      // Empty or too short input, reset everything
-      setSuggestions([]);
-      setIsValid(null);
-      setErrorMessage(null);
-    }
+      // Validate the input
+      const { isValid: flightValid, errorMessage: validationError } = validateFlightNumber(value);
+      setIsValid(flightValid);
+      setErrorMessage(validationError);
+      setIsValidating(false);
+    }, 150);
+    
+    return () => clearTimeout(validationTimer);
   }, [value]);
 
   const handleSuggestionClick = (suggestion: string) => {
     onChange(suggestion);
-    setIsValid(true);
-    setErrorMessage(null);
     setShowSuggestions(false);
   };
 
@@ -107,6 +111,7 @@ const FlightNumberInput: React.FC<FlightNumberInputProps> = ({
           onFocus={handleInputFocus}
           onBlur={handleInputBlur}
           isValid={isValid}
+          isLoading={isValidating}
           onClear={handleClearInput}
         />
         
