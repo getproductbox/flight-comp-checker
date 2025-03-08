@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { Info } from "lucide-react";
+import { Info, Search, AlertCircle, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -41,6 +41,7 @@ const FlightNumberInput: React.FC<FlightNumberInputProps> = ({
 }) => {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isValid, setIsValid] = useState<boolean | null>(null);
 
   // Generate flight suggestions based on input
   useEffect(() => {
@@ -60,13 +61,6 @@ const FlightNumberInput: React.FC<FlightNumberInputProps> = ({
             // Use predefined popular flight numbers for this airline
             const flightNumbers = POPULAR_FLIGHTS[airlineCode as keyof typeof POPULAR_FLIGHTS];
             flightSuggestions = flightNumbers.map(num => `${airlineCode}${num}`);
-            
-            // Filter suggestions based on current input if user has typed more than just the airline code
-            if (value.length > airlineCode.length) {
-              flightSuggestions = flightSuggestions.filter(suggestion => 
-                suggestion.startsWith(value)
-              );
-            }
           } else {
             // Generate some random flight numbers for other known airlines
             flightSuggestions = Array.from({ length: 5 }, (_, i) => 
@@ -74,19 +68,37 @@ const FlightNumberInput: React.FC<FlightNumberInputProps> = ({
             );
           }
           
+          // Filter suggestions if user has typed more than just the airline code
+          if (value.length > airlineCode.length) {
+            flightSuggestions = flightSuggestions.filter(suggestion => 
+              suggestion.toLowerCase().startsWith(value.toLowerCase())
+            );
+          }
+          
           setSuggestions(flightSuggestions);
-          setShowSuggestions(flightSuggestions.length > 0);
+          
+          // Validate the input
+          if (flightSuggestions.some(s => s.toLowerCase() === value.toLowerCase())) {
+            setIsValid(true);
+          } else if (value.length > airlineCode.length + 2) {
+            // If they've typed enough characters but no match, it might be invalid
+            setIsValid(false);
+          } else {
+            setIsValid(null); // Still typing, not enough to validate
+          }
+          
           return;
         }
       }
     }
     
     setSuggestions([]);
-    setShowSuggestions(false);
+    setIsValid(value.length > 0 ? false : null);
   }, [value]);
 
   const handleSuggestionClick = (suggestion: string) => {
     onChange(suggestion);
+    setIsValid(true);
     setShowSuggestions(false);
   };
 
@@ -96,6 +108,15 @@ const FlightNumberInput: React.FC<FlightNumberInputProps> = ({
       setShowSuggestions(false);
       onBlur();
     }, 200);
+  };
+
+  const getInputStatusIcon = () => {
+    if (isValid === true) {
+      return <Check className="h-4 w-4 text-green-500" />;
+    } else if (isValid === false) {
+      return <AlertCircle className="h-4 w-4 text-red-500" />;
+    }
+    return null;
   };
 
   return (
@@ -127,34 +148,65 @@ const FlightNumberInput: React.FC<FlightNumberInputProps> = ({
         </TooltipProvider>
       </div>
       <div className="relative">
-        <Input
-          id="flightNumber"
-          value={value}
-          onChange={(e) => onChange(e.target.value.toUpperCase())}
-          onFocus={() => {
-            onFocus();
-            if (value.length >= 2) setShowSuggestions(true);
-          }}
-          onBlur={handleInputBlur}
-          placeholder="e.g. BA123"
-          className="border-elegant-border bg-white/80 h-12 text-base placeholder:text-elegant-subtle/60"
-          required
-        />
+        <div className="relative">
+          <Input
+            id="flightNumber"
+            value={value}
+            onChange={(e) => onChange(e.target.value.toUpperCase())}
+            onFocus={() => {
+              onFocus();
+              if (value.length >= 2) {
+                setShowSuggestions(true);
+              }
+            }}
+            onBlur={handleInputBlur}
+            placeholder="e.g. BA123"
+            className={cn(
+              "border-elegant-border bg-white/80 h-12 text-base placeholder:text-elegant-subtle/60 pr-10",
+              isValid === false && "border-red-400 focus-visible:ring-red-400/20"
+            )}
+            required
+          />
+          {value.length > 0 && (
+            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+              {getInputStatusIcon()}
+            </div>
+          )}
+        </div>
         
-        {showSuggestions && suggestions.length > 0 && (
-          <div className="absolute z-10 mt-1 w-full bg-white rounded-md shadow-lg max-h-60 overflow-auto border border-elegant-border">
-            <ul className="py-1">
-              {suggestions.map((suggestion, index) => (
-                <li
-                  key={index}
-                  className="px-4 py-2 hover:bg-elegant-muted/30 cursor-pointer text-elegant-primary"
-                  onClick={() => handleSuggestionClick(suggestion)}
-                >
-                  {suggestion}
-                </li>
-              ))}
-            </ul>
+        {/* Show suggestions dropdown only when input is focused and there's some input */}
+        {value.length >= 2 && (
+          <div 
+            className={cn(
+              "absolute z-10 mt-1 w-full bg-white rounded-md shadow-lg max-h-60 overflow-auto border border-elegant-border transition-all duration-200",
+              showSuggestions ? "opacity-100" : "opacity-0 pointer-events-none"
+            )}
+          >
+            {suggestions.length > 0 ? (
+              <ul className="py-1">
+                {suggestions.map((suggestion, index) => (
+                  <li
+                    key={index}
+                    className="px-4 py-2 hover:bg-elegant-muted/30 cursor-pointer text-elegant-primary flex items-center"
+                    onClick={() => handleSuggestionClick(suggestion)}
+                  >
+                    <Search className="h-3.5 w-3.5 mr-2 text-elegant-accent/70" />
+                    {suggestion}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="px-4 py-3 text-sm text-elegant-accent/70 italic">
+                No matching flights found
+              </div>
+            )}
           </div>
+        )}
+        
+        {isValid === false && (
+          <p className="text-red-500 text-xs mt-1 ml-1 animate-fade-in">
+            Please enter a valid flight number (e.g., BA123)
+          </p>
         )}
       </div>
     </div>
