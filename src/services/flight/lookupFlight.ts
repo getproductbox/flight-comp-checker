@@ -1,7 +1,7 @@
 
 import { FlightFormData, FlightLookupResponse, OpenSkyFlight } from "@/types/flight";
 import { findMatchingFlight, calculateDelayHours, isFlightEligible } from "./flightHelpers";
-import { getCallsignFromFlightNumber } from "./airlineMapping";
+import { getCallsignFromFlightNumber, getNumericPart } from "./airlineMapping";
 import { getMockFlightData } from "./mockFlightData";
 
 // This is the main function that will be called from the frontend
@@ -14,6 +14,14 @@ export const lookupFlight = async (data: FlightFormData): Promise<FlightLookupRe
     
     if (USE_MOCK_DATA) {
       return getMockFlightData(data);
+    }
+    
+    // Validate flight number format (should be airline code + numbers)
+    if (!data.flightNumber.match(/^[A-Z0-9]{2,3}\d+$/)) {
+      return {
+        success: false,
+        error: "Invalid flight number format. Please enter an airline code followed by numbers (e.g., BA123)."
+      };
     }
     
     // Convert date to Unix timestamp (seconds since epoch)
@@ -37,15 +45,29 @@ export const lookupFlight = async (data: FlightFormData): Promise<FlightLookupRe
       };
     }
     
-    // Extract the numeric part of the flight number for additional matching
-    const flightNumberNumeric = data.flightNumber.match(/\d+/)?.[0];
+    // Extract the numeric part of the flight number
+    const flightNumberNumeric = getNumericPart(data.flightNumber);
     console.log(`Looking for flight with callsign prefix ${callsignPrefix} and number ${flightNumberNumeric || 'unknown'}`);
     
-    // We'll use a simple approach to find the flight: 
-    // Query all arrivals at major airports and filter by callsign
-    const airports = ["EGLL", "EGKK", "EHAM", "LFPG", "EDDF", "LEMD", "LEBL"]; // Sample major EU airports
+    // Expanded list of major airports to increase chances of finding the flight
+    const airports = [
+      "EGLL", "EGKK", // London (Heathrow, Gatwick)
+      "EGLC", "EGSS", // London (City, Stansted)
+      "EHAM", // Amsterdam
+      "LFPG", "LFPO", // Paris (Charles de Gaulle, Orly)
+      "EDDF", "EDDM", // Frankfurt, Munich
+      "LEMD", "LEBL", // Madrid, Barcelona
+      "LIRF", "LIML", // Rome, Milan
+      "EDDH", "EDDB", // Hamburg, Berlin
+      "LOWW", "LSZH", // Vienna, Zurich
+      "EKCH", "ESSA", // Copenhagen, Stockholm
+      "ENGM", "EFHK"  // Oslo, Helsinki
+    ];
     
     let matchedFlight: OpenSkyFlight | null = null;
+    let totalFlightsChecked = 0;
+    
+    console.log(`Searching for flight across ${airports.length} major airports...`);
     
     for (const airport of airports) {
       if (matchedFlight) break;
@@ -61,6 +83,7 @@ export const lookupFlight = async (data: FlightFormData): Promise<FlightLookupRe
         }
         
         const flights: OpenSkyFlight[] = await response.json();
+        totalFlightsChecked += flights.length;
         console.log(`Found ${flights.length} flights arriving at ${airport}`);
         
         // Find a flight with matching callsign
@@ -75,6 +98,8 @@ export const lookupFlight = async (data: FlightFormData): Promise<FlightLookupRe
         // Continue to next airport
       }
     }
+    
+    console.log(`Checked ${totalFlightsChecked} flights across ${airports.length} airports`);
     
     if (!matchedFlight) {
       return {
