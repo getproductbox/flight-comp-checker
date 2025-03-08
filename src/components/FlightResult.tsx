@@ -1,27 +1,43 @@
 
 import React from "react";
-import { ArrowLeft, CheckCircle, XCircle, Clock } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, Clock, Calendar, Plane } from "lucide-react";
 import { GlassCard } from "./ui-custom/GlassCard";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { AnimatedTransition } from "./ui-custom/AnimatedTransition";
+import { FlightResult as FlightResultType } from "@/types/flight";
 
 interface FlightResultProps {
-  flightData: {
-    flightNumber: string;
-    date: Date;
-    delayHours?: number;
-    isEligible?: boolean;
-  };
+  flightData: FlightResultType;
   onBack: () => void;
 }
 
 const FlightResult: React.FC<FlightResultProps> = ({ flightData, onBack }) => {
-  // In a real app, this would be calculated from actual API data
-  // For demo purposes, we're randomly generating eligibility
-  const delayHours = flightData.delayHours || Math.floor(Math.random() * 6) + 1;
-  const isEligible = flightData.isEligible ?? delayHours >= 3;
+  const { 
+    flightNumber, 
+    date, 
+    scheduledArrival, 
+    actualArrival, 
+    delayHours = 0, 
+    isEligible = false 
+  } = flightData;
+
+  // Format time string for display
+  const formatTimeString = (timeString?: string): string => {
+    if (!timeString) return "Not available";
+    
+    // Handle ISO date strings from the backend
+    if (timeString.includes('T')) {
+      return format(new Date(timeString), 'HH:mm');
+    }
+    
+    // Handle HH:MM format from the form
+    return timeString;
+  };
+
+  const scheduledTime = formatTimeString(scheduledArrival);
+  const actualTime = formatTimeString(actualArrival);
 
   return (
     <AnimatedTransition show={true} animation="scale" className="w-full max-w-md mx-auto">
@@ -60,16 +76,43 @@ const FlightResult: React.FC<FlightResultProps> = ({ flightData, onBack }) => {
           isEligible ? "bg-green-50" : "bg-elegant-muted"
         )}>
           <div className="text-sm text-left">
-            <div className="font-medium mb-1">Flight Details</div>
-            <div className="text-elegant-accent">
-              <div className="flex justify-between mb-1">
-                <span>Flight Number:</span>
-                <span className="font-medium text-elegant-primary">{flightData.flightNumber}</span>
+            <div className="font-medium mb-3">Flight Details</div>
+            <div className="text-elegant-accent space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="flex items-center">
+                  <Plane className="mr-2 h-4 w-4" />
+                  Flight Number:
+                </span>
+                <span className="font-medium text-elegant-primary">{flightNumber}</span>
               </div>
-              <div className="flex justify-between">
-                <span>Date:</span>
-                <span className="font-medium text-elegant-primary">{format(flightData.date, "PP")}</span>
+              
+              <div className="flex justify-between items-center">
+                <span className="flex items-center">
+                  <Calendar className="mr-2 h-4 w-4" />
+                  Date:
+                </span>
+                <span className="font-medium text-elegant-primary">{format(date, "PP")}</span>
               </div>
+
+              {scheduledArrival && (
+                <div className="flex justify-between items-center">
+                  <span className="flex items-center">
+                    <Clock className="mr-2 h-4 w-4" />
+                    Scheduled Arrival:
+                  </span>
+                  <span className="font-medium text-elegant-primary">{scheduledTime}</span>
+                </div>
+              )}
+
+              {actualArrival && (
+                <div className="flex justify-between items-center">
+                  <span className="flex items-center">
+                    <Clock className="mr-2 h-4 w-4" />
+                    Actual Arrival:
+                  </span>
+                  <span className="font-medium text-elegant-primary">{actualTime}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>

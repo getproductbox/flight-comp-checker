@@ -1,7 +1,7 @@
 
 import React, { useState } from "react";
 import { format } from "date-fns";
-import { CalendarIcon, PlaneTakeoff, ArrowRight } from "lucide-react";
+import { CalendarIcon, PlaneTakeoff, ArrowRight, Clock } from "lucide-react";
 import { GlassCard } from "./ui-custom/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,21 +13,25 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { FlightFormData } from "@/types/flight";
 
 interface FlightFormProps {
-  onSubmit: (data: { flightNumber: string; date: Date }) => void;
+  onSubmit: (data: FlightFormData) => void;
+  isLoading?: boolean;
 }
 
-const FlightForm: React.FC<FlightFormProps> = ({ onSubmit }) => {
+const FlightForm: React.FC<FlightFormProps> = ({ onSubmit, isLoading = false }) => {
   const [flightNumber, setFlightNumber] = useState("");
   const [date, setDate] = useState<Date | undefined>(new Date());
+  const [scheduledArrival, setScheduledArrival] = useState("");
   const [isFlightNumberFocused, setIsFlightNumberFocused] = useState(false);
   const [isDateFocused, setIsDateFocused] = useState(false);
+  const [isTimeFocused, setIsTimeFocused] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (flightNumber && date) {
-      onSubmit({ flightNumber, date });
+      onSubmit({ flightNumber, date, scheduledArrival });
     }
   };
 
@@ -109,12 +113,52 @@ const FlightForm: React.FC<FlightFormProps> = ({ onSubmit }) => {
           </Popover>
         </div>
 
+        <div className="space-y-2">
+          <Label
+            htmlFor="scheduledArrival"
+            className={cn(
+              "text-sm font-medium transition-all duration-200",
+              isTimeFocused ? "text-elegant-primary" : "text-elegant-accent"
+            )}
+          >
+            Scheduled Arrival Time (optional)
+          </Label>
+          <div className="relative">
+            <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-elegant-accent" />
+            <Input
+              id="scheduledArrival"
+              type="time"
+              value={scheduledArrival}
+              onChange={(e) => setScheduledArrival(e.target.value)}
+              onFocus={() => setIsTimeFocused(true)}
+              onBlur={() => setIsTimeFocused(false)}
+              className="border-elegant-border bg-white/80 h-12 text-base pl-10"
+            />
+          </div>
+          <p className="text-xs text-elegant-accent mt-1">
+            Adding the scheduled arrival time helps provide a more accurate delay calculation
+          </p>
+        </div>
+
         <Button
           type="submit"
           className="w-full h-12 bg-elegant-primary hover:bg-elegant-primary/90 text-white transition-all duration-300 shadow-elegant hover:shadow-elegant-hover"
+          disabled={isLoading}
         >
-          <span>Check Eligibility</span>
-          <ArrowRight className="ml-2 h-4 w-4" />
+          {isLoading ? (
+            <span className="flex items-center">
+              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Processing...
+            </span>
+          ) : (
+            <>
+              <span>Check Eligibility</span>
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </>
+          )}
         </Button>
       </form>
       
