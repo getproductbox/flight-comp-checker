@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect } from "react";
-import { Info, Search, AlertCircle, Check } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { Info, Search, AlertCircle, Check, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -24,6 +24,9 @@ const POPULAR_FLIGHTS = {
   U2: ["8001", "8002", "8003", "8004", "8005"],
 };
 
+// Flight number regex pattern
+const FLIGHT_NUMBER_PATTERN = /^[A-Z0-9]{2,3}\d{1,4}$/;
+
 interface FlightNumberInputProps {
   value: string;
   onChange: (value: string) => void;
@@ -42,16 +45,20 @@ const FlightNumberInput: React.FC<FlightNumberInputProps> = ({
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isValid, setIsValid] = useState<boolean | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Generate flight suggestions based on input
   useEffect(() => {
     if (value.length >= 2) {
+      // Extract an airline code (attempt to match 2-3 characters at the start)
       const airlineCode = value.match(/^[A-Z0-9]{2,3}/)?.[0];
       
       if (airlineCode) {
-        // Check if this is a known airline code
-        const isKnownAirline = AIRLINE_CALLSIGN_MAP[airlineCode] || 
-                              Object.keys(POPULAR_FLIGHTS).includes(airlineCode);
+        // Check known airline codes (both in map and popular flights)
+        const isKnownAirline = 
+          AIRLINE_CALLSIGN_MAP[airlineCode] !== undefined || 
+          Object.keys(POPULAR_FLIGHTS).includes(airlineCode);
         
         if (isKnownAirline) {
           // Generate suggestions
@@ -68,38 +75,75 @@ const FlightNumberInput: React.FC<FlightNumberInputProps> = ({
             );
           }
           
-          // Filter suggestions if user has typed more than just the airline code
+          // Filter suggestions based on what the user has typed
           if (value.length > airlineCode.length) {
+            const remainingPart = value.substring(airlineCode.length);
             flightSuggestions = flightSuggestions.filter(suggestion => 
-              suggestion.toLowerCase().startsWith(value.toLowerCase())
+              suggestion.substring(airlineCode.length).startsWith(remainingPart)
             );
           }
           
           setSuggestions(flightSuggestions);
           
-          // Validate the input
-          if (flightSuggestions.some(s => s.toLowerCase() === value.toLowerCase())) {
-            setIsValid(true);
-          } else if (value.length > airlineCode.length + 2) {
-            // If they've typed enough characters but no match, it might be invalid
-            setIsValid(false);
+          // Only validate if they've entered enough characters
+          if (value.length >= airlineCode.length + 1) {
+            validateFlightNumber(value);
           } else {
-            setIsValid(null); // Still typing, not enough to validate
+            // Still typing, not enough to fully validate
+            setIsValid(null);
+            setErrorMessage(null);
           }
           
           return;
         }
       }
+      
+      // If we get here, either the airline code wasn't recognized or the format is invalid
+      // Only show error after they've typed enough characters
+      if (value.length >= 3) {
+        setIsValid(false);
+        setErrorMessage("Please enter a valid airline code followed by numbers (e.g., BA123)");
+      } else {
+        // Still typing, give them a chance
+        setIsValid(null);
+        setErrorMessage(null);
+      }
+    } else if (value.length === 0) {
+      // Empty input, reset everything
+      setIsValid(null);
+      setErrorMessage(null);
     }
     
-    setSuggestions([]);
-    setIsValid(value.length > 0 ? false : null);
+    // If we're here and value.length < 2, we don't have enough to suggest
+    if (value.length < 2) {
+      setSuggestions([]);
+    }
   }, [value]);
+
+  const validateFlightNumber = (input: string) => {
+    // Basic format validation (2-3 letter/number airline code followed by 1-4 digits)
+    if (FLIGHT_NUMBER_PATTERN.test(input)) {
+      setIsValid(true);
+      setErrorMessage(null);
+    } else {
+      setIsValid(false);
+      setErrorMessage("Please enter a valid flight number (e.g., BA123)");
+    }
+  };
 
   const handleSuggestionClick = (suggestion: string) => {
     onChange(suggestion);
     setIsValid(true);
+    setErrorMessage(null);
     setShowSuggestions(false);
+    if (inputRef.current) {
+      inputRef.current.blur();
+    }
+  };
+
+  const handleInputFocus = () => {
+    onFocus();
+    setShowSuggestions(true);
   };
 
   const handleInputBlur = () => {
@@ -110,7 +154,20 @@ const FlightNumberInput: React.FC<FlightNumberInputProps> = ({
     }, 200);
   };
 
+  const handleClearInput = () => {
+    onChange("");
+    setIsValid(null);
+    setErrorMessage(null);
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  };
+
   const getInputStatusIcon = () => {
+    if (value.length === 0) {
+      return null;
+    }
+    
     if (isValid === true) {
       return <Check className="h-4 w-4 text-green-500" />;
     } else if (isValid === false) {
@@ -151,14 +208,10 @@ const FlightNumberInput: React.FC<FlightNumberInputProps> = ({
         <div className="relative">
           <Input
             id="flightNumber"
+            ref={inputRef}
             value={value}
             onChange={(e) => onChange(e.target.value.toUpperCase())}
-            onFocus={() => {
-              onFocus();
-              if (value.length >= 2) {
-                setShowSuggestions(true);
-              }
-            }}
+            onFocus={handleInputFocus}
             onBlur={handleInputBlur}
             placeholder="e.g. BA123"
             className={cn(
@@ -168,44 +221,51 @@ const FlightNumberInput: React.FC<FlightNumberInputProps> = ({
             required
           />
           {value.length > 0 && (
-            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+            <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-1.5">
               {getInputStatusIcon()}
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-5 w-5 p-0 -mr-1 text-elegant-subtle hover:text-elegant-accent" 
+                onClick={handleClearInput}
+                type="button"
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
             </div>
           )}
         </div>
         
-        {/* Show suggestions dropdown only when input is focused and there's some input */}
-        {value.length >= 2 && (
-          <div 
-            className={cn(
-              "absolute z-10 mt-1 w-full bg-white rounded-md shadow-lg max-h-60 overflow-auto border border-elegant-border transition-all duration-200",
-              showSuggestions ? "opacity-100" : "opacity-0 pointer-events-none"
-            )}
-          >
-            {suggestions.length > 0 ? (
-              <ul className="py-1">
-                {suggestions.map((suggestion, index) => (
-                  <li
-                    key={index}
-                    className="px-4 py-2 hover:bg-elegant-muted/30 cursor-pointer text-elegant-primary flex items-center"
-                    onClick={() => handleSuggestionClick(suggestion)}
-                  >
-                    <Search className="h-3.5 w-3.5 mr-2 text-elegant-accent/70" />
-                    {suggestion}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className="px-4 py-3 text-sm text-elegant-accent/70 italic">
-                No matching flights found
-              </div>
-            )}
-          </div>
-        )}
+        {/* Show suggestions dropdown */}
+        <div 
+          className={cn(
+            "absolute z-10 mt-1 w-full bg-white rounded-md shadow-lg max-h-60 overflow-auto border border-elegant-border transition-all duration-200",
+            showSuggestions && value.length >= 2 ? "opacity-100" : "opacity-0 pointer-events-none"
+          )}
+        >
+          {suggestions.length > 0 ? (
+            <ul className="py-1">
+              {suggestions.map((suggestion, index) => (
+                <li
+                  key={index}
+                  className="px-4 py-2 hover:bg-elegant-muted/30 cursor-pointer text-elegant-primary flex items-center"
+                  onClick={() => handleSuggestionClick(suggestion)}
+                >
+                  <Search className="h-3.5 w-3.5 mr-2 text-elegant-accent/70" />
+                  {suggestion}
+                </li>
+              ))}
+            </ul>
+          ) : value.length >= 2 ? (
+            <div className="px-4 py-3 text-sm text-elegant-accent/70 italic">
+              No matching flights found
+            </div>
+          ) : null}
+        </div>
         
-        {isValid === false && (
+        {isValid === false && errorMessage && (
           <p className="text-red-500 text-xs mt-1 ml-1 animate-fade-in">
-            Please enter a valid flight number (e.g., BA123)
+            {errorMessage}
           </p>
         )}
       </div>
