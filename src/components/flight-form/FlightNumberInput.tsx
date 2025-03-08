@@ -60,6 +60,13 @@ const FlightNumberInput: React.FC<FlightNumberInputProps> = ({
             // Use predefined popular flight numbers for this airline
             const flightNumbers = POPULAR_FLIGHTS[airlineCode as keyof typeof POPULAR_FLIGHTS];
             flightSuggestions = flightNumbers.map(num => `${airlineCode}${num}`);
+            
+            // Filter suggestions based on current input if user has typed more than just the airline code
+            if (value.length > airlineCode.length) {
+              flightSuggestions = flightSuggestions.filter(suggestion => 
+                suggestion.startsWith(value)
+              );
+            }
           } else {
             // Generate some random flight numbers for other known airlines
             flightSuggestions = Array.from({ length: 5 }, (_, i) => 
@@ -68,7 +75,7 @@ const FlightNumberInput: React.FC<FlightNumberInputProps> = ({
           }
           
           setSuggestions(flightSuggestions);
-          setShowSuggestions(true);
+          setShowSuggestions(flightSuggestions.length > 0);
           return;
         }
       }
