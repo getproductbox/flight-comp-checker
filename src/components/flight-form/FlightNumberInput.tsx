@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Info } from "lucide-react";
 import FlightInputField from "./flight-number/FlightInputField";
 import FlightSuggestionList from "./flight-number/FlightSuggestionList";
-import { getFlightSuggestions, validateFlightNumber } from "./flight-number/flightNumberUtils";
+import { getFlightSuggestions } from "./flight-number/flightNumberUtils";
 import FlightNumberValidation from "./flight-number/FlightNumberValidation";
 
 interface FlightNumberInputProps {
@@ -32,37 +32,28 @@ const FlightNumberInput: React.FC<FlightNumberInputProps> = ({
 }) => {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [isValid, setIsValid] = useState<boolean | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isValidating, setIsValidating] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Update validation and suggestions when the input changes
+  // Update suggestions when the input changes
   useEffect(() => {
-    // Reset validation if input is cleared
+    // Reset if input is cleared
     if (!value || value.length === 0) {
-      setIsValid(null);
-      setErrorMessage(null);
       setSuggestions([]);
       return;
     }
 
     // Show loading state briefly for better UX
-    setIsValidating(true);
+    setIsLoading(true);
     
     // Use a small timeout to simulate processing and prevent UI jank
-    const validationTimer = setTimeout(() => {
+    const timer = setTimeout(() => {
       // Get suggestions
       const { suggestions: flightSuggestions } = getFlightSuggestions(value);
       setSuggestions(flightSuggestions);
-      
-      // Validate the input
-      const { isValid: flightValid, errorMessage: validationError } = validateFlightNumber(value);
-      setIsValid(flightValid);
-      setErrorMessage(validationError);
-      setIsValidating(false);
+      setIsLoading(false);
     }, 150);
     
-    return () => clearTimeout(validationTimer);
+    return () => clearTimeout(timer);
   }, [value]);
 
   const handleSuggestionClick = (suggestion: string) => {
@@ -85,8 +76,6 @@ const FlightNumberInput: React.FC<FlightNumberInputProps> = ({
 
   const handleClearInput = () => {
     onChange("");
-    setIsValid(null);
-    setErrorMessage(null);
   };
 
   return (
@@ -110,8 +99,7 @@ const FlightNumberInput: React.FC<FlightNumberInputProps> = ({
           onChange={onChange}
           onFocus={handleInputFocus}
           onBlur={handleInputBlur}
-          isValid={isValid}
-          isLoading={isValidating}
+          isLoading={isLoading}
           onClear={handleClearInput}
         />
         
@@ -121,7 +109,7 @@ const FlightNumberInput: React.FC<FlightNumberInputProps> = ({
           onSuggestionClick={handleSuggestionClick}
         />
         
-        <FlightNumberValidation isValid={isValid} errorMessage={errorMessage} />
+        <FlightNumberValidation />
       </div>
     </div>
   );

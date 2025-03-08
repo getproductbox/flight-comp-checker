@@ -3,7 +3,6 @@ import React, { useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
-import { cn } from "@/lib/utils";
 import InputStatusIndicator from "./InputStatusIndicator";
 
 interface FlightInputFieldProps {
@@ -11,7 +10,6 @@ interface FlightInputFieldProps {
   onChange: (value: string) => void;
   onFocus: () => void;
   onBlur: () => void;
-  isValid: boolean | null;
   isLoading?: boolean;
   onClear: () => void;
 }
@@ -21,7 +19,6 @@ const FlightInputField: React.FC<FlightInputFieldProps> = ({
   onChange,
   onFocus,
   onBlur,
-  isValid,
   isLoading = false,
   onClear
 }) => {
@@ -53,15 +50,12 @@ const FlightInputField: React.FC<FlightInputFieldProps> = ({
         onBlur={onBlur}
         onKeyDown={handleKeyDown}
         placeholder="e.g. BA123"
-        className={cn(
-          "border-elegant-border bg-white/80 h-12 text-base placeholder:text-elegant-subtle/60 pr-10",
-          isValid === false && "border-red-400 focus-visible:ring-red-400/20"
-        )}
+        className="border-elegant-border bg-white/80 h-12 text-base placeholder:text-elegant-subtle/60 pr-10"
         required
       />
       {value.length > 0 && (
         <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-1.5">
-          <InputStatusIndicator isValid={isValid} isLoading={isLoading} />
+          <InputStatusIndicator isLoading={isLoading} />
           <Button 
             variant="ghost" 
             size="icon" 

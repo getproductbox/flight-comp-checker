@@ -32,19 +32,16 @@ export const isKnownAirline = (airlineCode: string): boolean => {
 // Generate flight suggestions based on input
 export const getFlightSuggestions = (input: string) => {
   if (!input || input.length < 2) {
-    return { suggestions: [], isKnownAirlineCode: false };
+    return { suggestions: [] };
   }
   
   // Extract an airline code (attempt to match 2-3 characters at the start)
   const airlineCode = extractAirlineCode(input);
   let suggestions: string[] = [];
-  let isKnownAirlineCode = false;
   
   if (airlineCode) {
     // Check known airline codes
-    isKnownAirlineCode = isKnownAirline(airlineCode);
-    
-    if (isKnownAirlineCode) {
+    if (isKnownAirline(airlineCode)) {
       // Generate suggestions
       if (Object.keys(POPULAR_FLIGHTS).includes(airlineCode)) {
         // Use predefined popular flight numbers for this airline
@@ -67,41 +64,5 @@ export const getFlightSuggestions = (input: string) => {
     }
   }
   
-  return { suggestions, isKnownAirlineCode };
-};
-
-// Simplified validation function
-export const validateFlightNumber = (input: string) => {
-  // Empty input case
-  if (!input || input.length === 0) {
-    return { isValid: null, errorMessage: null };
-  }
-  
-  // Too short - still typing
-  if (input.length < 3) {
-    return { 
-      isValid: null, 
-      errorMessage: "Please enter at least 3 characters" 
-    };
-  }
-  
-  // Basic format check - must be 2-3 letters/numbers followed by 1-4 digits
-  if (!/^[A-Z0-9]{2,3}\d{1,4}$/.test(input)) {
-    return { 
-      isValid: false, 
-      errorMessage: "Invalid format. Example: BA123" 
-    };
-  }
-  
-  // Check if airline code is known
-  const airlineCode = extractAirlineCode(input);
-  if (!isKnownAirline(airlineCode)) {
-    return { 
-      isValid: false, 
-      errorMessage: `Unknown airline code: ${airlineCode}` 
-    };
-  }
-  
-  // If we get here, the flight number looks valid
-  return { isValid: true, errorMessage: null };
+  return { suggestions };
 };
