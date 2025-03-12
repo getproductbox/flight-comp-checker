@@ -1,6 +1,6 @@
 
-import React from "react";
-import { Info } from "lucide-react";
+import React, { useState } from "react";
+import { Info, Check, AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -27,6 +27,45 @@ const FlightNumberInput: React.FC<FlightNumberInputProps> = ({
   onFocus,
   onBlur,
 }) => {
+  const [isValid, setIsValid] = useState<boolean | null>(null);
+
+  // Simple validation for flight number format
+  const validateFlightNumber = (input: string): boolean => {
+    // Valid format: 2-3 letters followed by 1-4 digits (e.g., BA123, LH1234)
+    return /^[A-Z]{2,3}\d{1,4}$/.test(input);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value.toUpperCase();
+    onChange(newValue);
+    
+    // Only validate if there's input
+    if (newValue.length > 0) {
+      setIsValid(validateFlightNumber(newValue));
+    } else {
+      setIsValid(null);
+    }
+  };
+
+  // Get icon and status color
+  const getStatusInfo = () => {
+    if (isValid === null) return null;
+    
+    if (isValid) {
+      return {
+        icon: <Check className="h-4 w-4 text-green-500" />,
+        color: "border-green-500"
+      };
+    }
+    
+    return {
+      icon: <AlertCircle className="h-4 w-4 text-red-500" />,
+      color: "border-red-500"
+    };
+  };
+
+  const statusInfo = getStatusInfo();
+
   return (
     <div className="space-y-2">
       <div className="flex items-center">
@@ -55,16 +94,31 @@ const FlightNumberInput: React.FC<FlightNumberInputProps> = ({
           </Tooltip>
         </TooltipProvider>
       </div>
-      <Input
-        id="flightNumber"
-        value={value}
-        onChange={(e) => onChange(e.target.value.toUpperCase())}
-        onFocus={onFocus}
-        onBlur={onBlur}
-        placeholder="e.g. BA123"
-        className="border-elegant-border bg-white/80 h-12 text-base placeholder:text-elegant-subtle/60"
-        required
-      />
+      <div className="relative">
+        <Input
+          id="flightNumber"
+          value={value}
+          onChange={handleInputChange}
+          onFocus={onFocus}
+          onBlur={onBlur}
+          placeholder="e.g. BA123"
+          className={cn(
+            "border-elegant-border bg-white/80 h-12 text-base placeholder:text-elegant-subtle/60 pr-10",
+            statusInfo?.color
+          )}
+          required
+        />
+        {statusInfo && (
+          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+            {statusInfo.icon}
+          </div>
+        )}
+      </div>
+      {isValid === false && (
+        <p className="text-xs text-red-500 mt-1">
+          Please enter a valid flight number (e.g., BA123)
+        </p>
+      )}
     </div>
   );
 };

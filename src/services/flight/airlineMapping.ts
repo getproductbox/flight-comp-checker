@@ -30,12 +30,11 @@ export const AIRLINE_CALLSIGN_MAP: Record<string, string> = {
 
 // Helper function to map airline code to callsign prefix
 export const getCallsignFromFlightNumber = (flightNumber: string): string | null => {
-  // Extract airline code from flight number
-  // This will handle both 2-letter (BA, LH) and 3-letter (EZY) airline codes
-  const airlineCode = flightNumber.match(/^[A-Z0-9]{2,3}(?=\d)/)?.[0];
+  // Extract airline code from flight number (only the letters at the beginning)
+  const airlineCode = flightNumber.match(/^[A-Z]+/)?.[0];
   
   if (!airlineCode) {
-    console.warn(`Could not extract airline code from flight number: ${flightNumber}`);
+    console.log(`Could not extract airline code from flight number: ${flightNumber}`);
     return null;
   }
   
@@ -55,5 +54,7 @@ export const normalizeCallsign = (callsign: string): string => {
 
 // Extract numeric part from flight number
 export const getNumericPart = (flightNumber: string): string | null => {
-  return flightNumber.match(/\d+/)?.[0] || null;
+  const numericPart = flightNumber.match(/\d+/)?.[0] || null;
+  console.log(`Extracted numeric part: ${numericPart} from flight number: ${flightNumber}`);
+  return numericPart;
 };
