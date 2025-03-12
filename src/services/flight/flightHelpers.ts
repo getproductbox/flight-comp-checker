@@ -1,6 +1,11 @@
 
 import { OpenSkyFlight } from "@/types/flight";
-import { getCallsignFromFlightNumber, normalizeCallsign, getNumericPart } from "./airlineMapping";
+import { 
+  getCallsignFromFlightNumber, 
+  normalizeCallsign, 
+  getNumericPart,
+  getCallsignVariations
+} from "./airlineMapping";
 
 // Find matching flight from OpenSky results with improved matching logic
 export const findMatchingFlight = (
@@ -15,94 +20,83 @@ export const findMatchingFlight = (
     return null;
   }
   
-  // Extract airline code and numeric part from flight number
-  const airlineCode = flightNumber.match(/^[A-Z]+/)?.[0];
+  // Generate all possible callsign variations to match against
+  const callsignVariations = getCallsignVariations(flightNumber);
+  console.log(`Generated callsign variations for ${flightNumber}:`, callsignVariations);
+
+  // Get numeric part for fallback matching
   const numericPart = getNumericPart(flightNumber);
   
-  if (!airlineCode || !numericPart) {
-    console.log(`Could not parse flight number components from: ${flightNumber}`);
+  if (callsignVariations.length === 0) {
+    console.log(`Could not generate callsign variations from: ${flightNumber}`);
     return null;
   }
   
-  // Get both the original code (e.g., "BA") and the mapped callsign (e.g., "BAW")
-  const mappedCallsign = getCallsignFromFlightNumber(flightNumber);
-  
-  console.log(`Searching with airline code: ${airlineCode}, mapped callsign: ${mappedCallsign}, numeric part: ${numericPart}`);
-  console.log(`Total flights to search through: ${flights.length}`);
+  console.log(`Searching through ${flights.length} flights for matches`);
 
   // Log a few sample flights to help debugging
   if (flights.length > 0) {
     console.log("Sample flights for debugging:");
-    flights.slice(0, Math.min(3, flights.length)).forEach(flight => {
-      console.log(`- Callsign: ${flight.callsign}, First seen: ${new Date(flight.firstSeen * 1000).toISOString()}`);
+    flights.slice(0, Math.min(5, flights.length)).forEach(flight => {
+      console.log(`- Callsign: "${flight.callsign}", First seen: ${new Date(flight.firstSeen * 1000).toISOString()}`);
     });
   }
   
-  // Priority 1: Try to find exact match with mapped callsign (e.g., "BAW123")
-  const exactMatchMapped = flights.find(flight => {
-    if (!flight.callsign) return false;
-    const normalizedCallsign = normalizeCallsign(flight.callsign);
-    const expected = normalizeCallsign(`${mappedCallsign}${numericPart}`);
-    return normalizedCallsign === expected;
-  });
-  
-  if (exactMatchMapped) {
-    console.log(`Found exact match with mapped callsign: ${exactMatchMapped.callsign}`);
-    return exactMatchMapped;
+  // MATCHING STRATEGY 1: Exact match with any of our callsign variations
+  for (const variation of callsignVariations) {
+    const exactMatch = flights.find(flight => {
+      if (!flight.callsign) return false;
+      const normalizedFlightCallsign = normalizeCallsign(flight.callsign);
+      const isMatch = normalizedFlightCallsign === variation;
+      if (isMatch) {
+        console.log(`Found exact match: "${flight.callsign}" matches variation "${variation}"`);
+      }
+      return isMatch;
+    });
+    
+    if (exactMatch) {
+      console.log(`Found exact match with callsign: ${exactMatch.callsign}`);
+      return exactMatch;
+    }
   }
   
-  // Priority 2: Try to find exact match with original airline code (e.g., "BA123")
-  const exactMatchOriginal = flights.find(flight => {
-    if (!flight.callsign) return false;
-    const normalizedCallsign = normalizeCallsign(flight.callsign);
-    const expected = normalizeCallsign(`${airlineCode}${numericPart}`);
-    return normalizedCallsign === expected;
-  });
-  
-  if (exactMatchOriginal) {
-    console.log(`Found exact match with original airline code: ${exactMatchOriginal.callsign}`);
-    return exactMatchOriginal;
+  // MATCHING STRATEGY 2: Check if any flight callsign CONTAINS one of our variations
+  for (const variation of callsignVariations) {
+    const containsMatch = flights.find(flight => {
+      if (!flight.callsign) return false;
+      const normalizedFlightCallsign = normalizeCallsign(flight.callsign);
+      const isMatch = normalizedFlightCallsign.includes(variation);
+      if (isMatch) {
+        console.log(`Found contains match: "${flight.callsign}" contains variation "${variation}"`);
+      }
+      return isMatch;
+    });
+    
+    if (containsMatch) {
+      console.log(`Found contains match with callsign: ${containsMatch.callsign}`);
+      return containsMatch;
+    }
   }
   
-  // Priority 3: Look for flights where callsign contains mapped callsign AND numeric part
-  const partialMatchMapped = flights.find(flight => {
-    if (!flight.callsign) return false;
-    const normalizedCallsign = normalizeCallsign(flight.callsign);
-    return normalizedCallsign.includes(normalizeCallsign(mappedCallsign || "")) && 
-           normalizedCallsign.includes(numericPart);
-  });
-  
-  if (partialMatchMapped) {
-    console.log(`Found partial match with mapped callsign: ${partialMatchMapped.callsign}`);
-    return partialMatchMapped;
+  // MATCHING STRATEGY 3: Check if any flight's callsign contains the numeric part
+  if (numericPart) {
+    const numericMatch = flights.find(flight => {
+      if (!flight.callsign) return false;
+      const normalizedFlightCallsign = normalizeCallsign(flight.callsign);
+      const isMatch = normalizedFlightCallsign.includes(numericPart);
+      if (isMatch) {
+        console.log(`Found numeric match: "${flight.callsign}" contains numeric part "${numericPart}"`);
+      }
+      return isMatch;
+    });
+    
+    if (numericMatch) {
+      console.log(`Found numeric-only match: ${numericMatch.callsign}`);
+      return numericMatch;
+    }
   }
   
-  // Priority 4: Look for flights where callsign contains original airline code AND numeric part
-  const partialMatchOriginal = flights.find(flight => {
-    if (!flight.callsign) return false;
-    const normalizedCallsign = normalizeCallsign(flight.callsign);
-    return normalizedCallsign.includes(normalizeCallsign(airlineCode)) && 
-           normalizedCallsign.includes(numericPart);
-  });
-  
-  if (partialMatchOriginal) {
-    console.log(`Found partial match with original airline code: ${partialMatchOriginal.callsign}`);
-    return partialMatchOriginal;
-  }
-  
-  // Priority 5: Just match on numeric part (least reliable)
-  const numericMatch = flights.find(flight => {
-    if (!flight.callsign) return false;
-    const normalizedCallsign = normalizeCallsign(flight.callsign);
-    return normalizedCallsign.includes(numericPart);
-  });
-  
-  if (numericMatch) {
-    console.log(`Found numeric-only match: ${numericMatch.callsign}`);
-    return numericMatch;
-  }
-  
-  console.log(`No matching flight found for ${flightNumber}`);
+  console.log(`No matching flight found for ${flightNumber} after trying all strategies`);
   return null;
 };
 

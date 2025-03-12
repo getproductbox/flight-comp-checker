@@ -54,7 +54,39 @@ export const normalizeCallsign = (callsign: string): string => {
 
 // Extract numeric part from flight number
 export const getNumericPart = (flightNumber: string): string | null => {
+  // This regex extracts only the digits from the flight number
   const numericPart = flightNumber.match(/\d+/)?.[0] || null;
   console.log(`Extracted numeric part: ${numericPart} from flight number: ${flightNumber}`);
   return numericPart;
+};
+
+// More flexible airline code extraction
+export const getAirlineCode = (flightNumber: string): string | null => {
+  // Extract letters from the beginning of the flight number
+  const airlineCode = flightNumber.match(/^[A-Z]+/)?.[0];
+  if (!airlineCode) {
+    console.log(`Could not extract airline code from flight number: ${flightNumber}`);
+    return null;
+  }
+  return airlineCode;
+};
+
+// Generate all possible callsign variations for a flight
+export const getCallsignVariations = (flightNumber: string): string[] => {
+  const airlineCode = getAirlineCode(flightNumber);
+  const numericPart = getNumericPart(flightNumber);
+  
+  if (!airlineCode || !numericPart) {
+    return [];
+  }
+  
+  const mappedCallsign = AIRLINE_CALLSIGN_MAP[airlineCode] || airlineCode;
+  
+  // Create variations: with original code, mapped code, with/without spaces
+  return [
+    `${airlineCode}${numericPart}`,
+    `${airlineCode} ${numericPart}`,
+    `${mappedCallsign}${numericPart}`,
+    `${mappedCallsign} ${numericPart}`
+  ].map(normalizeCallsign);
 };

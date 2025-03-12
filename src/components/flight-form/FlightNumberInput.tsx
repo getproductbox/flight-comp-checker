@@ -29,10 +29,12 @@ const FlightNumberInput: React.FC<FlightNumberInputProps> = ({
 }) => {
   const [isValid, setIsValid] = useState<boolean | null>(null);
 
-  // Simple validation for flight number format
+  // Improved validation for flight number format
   const validateFlightNumber = (input: string): boolean => {
-    // Valid format: 2-3 letters followed by 1-4 digits (e.g., BA123, LH1234)
-    return /^[A-Z]{2,3}\d{1,4}$/.test(input);
+    // Valid formats:
+    // 1. 2-3 letters followed by 1-4 digits (e.g., BA123, LH1234)
+    // 2. 1-3 letters + 1-4 digits (e.g., U21234)
+    return /^[A-Z]{1,3}\d{1,4}$/.test(input);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -101,7 +103,7 @@ const FlightNumberInput: React.FC<FlightNumberInputProps> = ({
           onChange={handleInputChange}
           onFocus={onFocus}
           onBlur={onBlur}
-          placeholder="e.g. BA123"
+          placeholder="e.g. BA341"
           className={cn(
             "border-elegant-border bg-white/80 h-12 text-base placeholder:text-elegant-subtle/60 pr-10",
             statusInfo?.color
@@ -116,7 +118,7 @@ const FlightNumberInput: React.FC<FlightNumberInputProps> = ({
       </div>
       {isValid === false && (
         <p className="text-xs text-red-500 mt-1">
-          Please enter a valid flight number (e.g., BA123)
+          Please enter a valid flight number (e.g., BA341)
         </p>
       )}
     </div>

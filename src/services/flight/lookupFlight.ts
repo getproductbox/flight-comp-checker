@@ -1,17 +1,51 @@
 
 import { FlightFormData, FlightLookupResponse, OpenSkyFlight } from "@/types/flight";
 import { findMatchingFlight, calculateDelayHours, isFlightEligible } from "./flightHelpers";
-import { getCallsignFromFlightNumber, getNumericPart } from "./airlineMapping";
+import { getCallsignFromFlightNumber, getNumericPart, getCallsignVariations } from "./airlineMapping";
 import { getMockFlightData } from "./mockFlightData";
+
+// Helper function to add retry capability to fetch
+const fetchWithRetry = async (url: string, retries = 2): Promise<Response> => {
+  let lastError: Error;
+  
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const response = await fetch(url);
+      if (response.ok) return response;
+      
+      if (response.status === 404) {
+        console.warn(`OpenSky API 404 for ${url} - airport may not exist or have data`);
+        throw new Error("404 Not Found");
+      }
+      
+      if (response.status === 429) {
+        console.warn(`Rate limit hit for ${url} - waiting before retry`);
+        // Add a small delay before retry
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+      }
+    } catch (error) {
+      console.error(`Attempt ${attempt + 1}/${retries + 1} failed for ${url}:`, error);
+      lastError = error as Error;
+      
+      // Add exponential backoff delay
+      if (attempt < retries) {
+        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
+      }
+    }
+  }
+  
+  throw lastError || new Error(`Failed to fetch ${url} after ${retries} retries`);
+};
 
 // This is the main function that will be called from the frontend
 export const lookupFlight = async (data: FlightFormData): Promise<FlightLookupResponse> => {
   try {
     console.log("Looking up flight:", data);
 
-    // For development or fallback, we'll use mock data
-    const ENABLE_MOCK_FALLBACK = true;
-    const USE_MOCK_DATA = false;
+    // Configuration settings
+    const ENABLE_MOCK_FALLBACK = true;  // Use mock data if real data not found
+    const USE_MOCK_DATA = false;        // Force use of mock data (for testing)
+    const MAX_AIRPORTS_TO_TRY = 10;      // Limit how many airports we check
     
     if (USE_MOCK_DATA) {
       console.log("Using mock data for flight lookup");
@@ -19,10 +53,19 @@ export const lookupFlight = async (data: FlightFormData): Promise<FlightLookupRe
     }
     
     // Validate flight number format (should be airline code + numbers)
-    if (!data.flightNumber.match(/^[A-Z0-9]{2,3}\d+$/)) {
+    if (!data.flightNumber.match(/^[A-Z]{1,3}\d{1,4}$/)) {
       return {
         success: false,
         error: "Invalid flight number format. Please enter an airline code followed by numbers (e.g., BA123)."
+      };
+    }
+    
+    // Get all possible callsign variations to help with matching
+    const callsignVariations = getCallsignVariations(data.flightNumber);
+    if (callsignVariations.length === 0) {
+      return {
+        success: false,
+        error: "Could not parse the flight number correctly."
       };
     }
     
@@ -51,16 +94,22 @@ export const lookupFlight = async (data: FlightFormData): Promise<FlightLookupRe
     // Extract the numeric part of the flight number
     const flightNumberNumeric = getNumericPart(data.flightNumber);
     console.log(`Looking for flight with callsign prefix ${callsignPrefix} and number ${flightNumberNumeric || 'unknown'}`);
+    console.log(`Will try these callsign variations:`, callsignVariations);
     
     // Expanded list of major airports to increase chances of finding the flight
+    // Prioritizing major European hubs for EU261 claims
     const airports = [
       "EGLL", "EGKK", // London (Heathrow, Gatwick)
-      "EGLC", "EGSS", // London (City, Stansted)
       "EHAM", // Amsterdam
-      "LFPG", "LFPO", // Paris (Charles de Gaulle, Orly)
-      "EDDF", "EDDM", // Frankfurt, Munich
-      "LEMD", "LEBL", // Madrid, Barcelona
-      "LIRF", "LIML", // Rome, Milan
+      "LFPG", // Paris Charles de Gaulle
+      "EDDF", // Frankfurt
+      "LEMD", // Madrid
+      "LIRF", // Rome
+      "EDDM", // Munich
+      "EGLC", "EGSS", // London (City, Stansted)
+      "LFPO", // Paris Orly
+      "LEBL", // Barcelona
+      "LIML", // Milan
       "EDDH", "EDDB", // Hamburg, Berlin
       "LOWW", "LSZH", // Vienna, Zurich
       "EKCH", "ESSA", // Copenhagen, Stockholm
@@ -73,40 +122,39 @@ export const lookupFlight = async (data: FlightFormData): Promise<FlightLookupRe
     let failedAirports = 0;
     let allFlights: OpenSkyFlight[] = [];
     
-    console.log(`Searching for flight across ${airports.length} major airports...`);
+    console.log(`Searching for flight across airports...`);
     
     // Search both arrival and departure (for more chances to find the flight)
     const searchDirections = ['arrival', 'departure'];
+    const limitedAirports = airports.slice(0, MAX_AIRPORTS_TO_TRY);
     
     for (const direction of searchDirections) {
       if (matchedFlight) break;
       
       console.log(`Searching ${direction} flights...`);
       
-      for (const airport of airports) {
+      for (const airport of limitedAirports) {
         if (matchedFlight) break;
         
         const url = `https://opensky-network.org/api/flights/${direction}?airport=${airport}&begin=${beginTime}&end=${endTime}`;
         
         try {
           console.log(`Fetching flights for ${airport} (${direction})...`);
-          const response = await fetch(url);
-          
-          if (!response.ok) {
-            console.warn(`OpenSky API error for ${airport}: ${response.status}`);
-            failedAirports++;
-            continue; // Try next airport
-          }
+          // Use retry-enabled fetch
+          const response = await fetchWithRetry(url);
           
           const flights: OpenSkyFlight[] = await response.json();
           successfulAirports++;
           totalFlightsChecked += flights.length;
-          allFlights = [...allFlights, ...flights];
           
-          console.log(`Found ${flights.length} ${direction} flights at ${airport}`);
+          // Filter out flights with empty callsigns before adding to allFlights
+          const validFlights = flights.filter(f => f.callsign && f.callsign.trim() !== '');
+          allFlights = [...allFlights, ...validFlights];
+          
+          console.log(`Found ${validFlights.length} valid ${direction} flights at ${airport}`);
           
           // Find a flight with matching callsign
-          matchedFlight = findMatchingFlight(flights, data.flightNumber, data.date);
+          matchedFlight = findMatchingFlight(validFlights, data.flightNumber, data.date);
           
           if (matchedFlight) {
             console.log(`Found matching flight at ${airport} (${direction}):`, matchedFlight);
@@ -172,6 +220,13 @@ export const lookupFlight = async (data: FlightFormData): Promise<FlightLookupRe
     };
   } catch (error) {
     console.error("Error looking up flight:", error);
+    
+    // Return mock data in case of unexpected errors
+    if (ENABLE_MOCK_FALLBACK) {
+      console.log("Error occurred during lookup. Falling back to mock data.");
+      return getMockFlightData(data);
+    }
+    
     return {
       success: false,
       error: "Failed to retrieve flight data. Please try again later."
